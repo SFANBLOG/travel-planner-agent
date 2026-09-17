@@ -1,0 +1,17 @@
+# TravelAI 旅行智脑 —— 后端依赖
+# 注：本机 Anaconda 已预装下列大部分库，可直接用 Anaconda python 运行；
+# 其他环境可用 pip install -r requirements.txt 安装。
+fastapi>=0.109
+uvicorn[standard]>=0.27
+sqlalchemy>=2.0
+pydantic>=2.5
+pydantic-settings>=2.1
+python-jose[cryptography]>=3.3
+bcrypt>=4.0
+email-validator>=2.0
+python-multipart>=0.0.9
+langgraph>=0.0.40
+langchain-openai>=0.1.0
+langchain-chroma>=0.1.0
+chromadb>=0.4.0
+openai>=1.0.0

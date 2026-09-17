@@ -1,0 +1,82 @@
+# ---------- 临时调试脚本与日志（下划线前缀的排查产物）----------
+# 注意：必须放行 __init__.py，否则会被 _*.py 误伤
+_*.py
+_*.log
+_*.txt
+_*.json
+!**/__init__.py
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---------- 虚拟环境 ----------
+.venv/
+venv/
+env/
+ENV/
+
+# ---------- 环境变量 / 密钥 ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------- 运行时数据（SQLite / 向量库，由 scripts/seed_data.py 重建）----------
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ---------- 前端 ----------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# ---------- 日志 ----------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- 编辑器 / 系统 ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- WorkBuddy 工作区 ----------
+.workbuddy/
+
+# ---------- 构建 / 部署 ----------
+*.tar
+*.tar.gz
+*.zip
