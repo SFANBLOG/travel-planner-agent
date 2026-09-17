@@ -8,12 +8,12 @@ from app.models.user import User
 from app.core.deps import get_current_user
 from app.services.trip_service import list_trips, get_trip, delete_trip, update_status
 from app.schemas.trip import TripListOut
-from app.agent.rule_engine import parse_requirements_rule
 
 router = APIRouter(prefix="/trips", tags=["行程"])
 
 
-def _serialize_day(day):
+def _serialize_day(day, name_map=None):
+    name_map = name_map or {}
     return {
         "id": day.id,
         "day_number": day.day_number,
@@ -24,7 +24,12 @@ def _serialize_day(day):
         "spots": [{
             "id": s.id,
             "spot_id": s.spot_id,
-            "name": s.notes[:20] if s.notes else None,  # 简化展示
+            # 优先使用知识库中真实景点名；无 spot_id 时回退到备注前 20 字
+            "name": (
+                name_map.get(s.spot_id)
+                if s.spot_id
+                else (s.notes[:20] if s.notes else None)
+            ),
             "order_index": s.order_index,
             "start_time": s.start_time.isoformat() if s.start_time else None,
             "end_time": s.end_time.isoformat() if s.end_time else None,
@@ -37,6 +42,21 @@ def _serialize_day(day):
 
 
 def serialize_trip(trip) -> dict:
+    # 一次性解析本行程涉及的全部 spot_id → 景点名，避免 N+1 查询
+    spot_ids = [s.spot_id for d in trip.days for s in d.spots if s.spot_id]
+    name_map: dict = {}
+    if spot_ids:
+        try:
+            from app.services.spot_service import SpotService
+
+            svc = SpotService()
+            for sid in set(spot_ids):
+                sp = svc.get_spot_by_id(sid)
+                if sp and sp.get("name"):
+                    name_map[sid] = sp["name"]
+        except Exception:
+            # 知识库不可用时不阻断行程展示
+            pass
     return {
         "id": trip.id,
         "user_id": trip.user_id,
@@ -48,7 +68,7 @@ def serialize_trip(trip) -> dict:
         "status": trip.status,
         "requirements": trip.requirements,
         "generated_plan": trip.generated_plan,
-        "days": [_serialize_day(d) for d in trip.days],
+        "days": [_serialize_day(d, name_map) for d in trip.days],
         "created_at": trip.created_at,
     }
 

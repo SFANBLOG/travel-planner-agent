@@ -190,10 +190,27 @@ def generate_itinerary(state: AgentState) -> AgentState:
 请生成一份详细的多日行程规划（Markdown），包含每日主题、具体景点安排（含时间建议）、交通方式、餐饮建议、注意事项。
 行程应考虑：景点之间距离（同一区域集中安排）、合理时间分配、用户偏好（{state.get('travel_style')} 风格）。"""
             content = llm.complete(prompt, max_tokens=3000)
+            # LLM 仅产出 Markdown 文本，结构化「逐日日程 + 预算」由规则引擎补全，
+            # 以保证「我的行程」详情页仍有可渲染的日程与预算明细。
+            days_structured, budget_breakdown = [], {}
+            try:
+                rule_plan = build_itinerary_rule(
+                    destination=state.get("destination"),
+                    start_date=state.get("start_date"),
+                    end_date=state.get("end_date"),
+                    budget=state.get("budget"),
+                    travelers=state.get("travelers") or 1,
+                    style=state.get("travel_style") or "relaxed",
+                    spots=spots,
+                )
+                days_structured = rule_plan.get("days", [])
+                budget_breakdown = rule_plan.get("budget_breakdown", {})
+            except Exception as e2:
+                logger.warning("结构化日程补全失败（不影响 LLM 文本）: %s", e2)
             state["draft_itinerary"] = {
                 "content": content,
-                "days": [],
-                "budget_breakdown": {},
+                "days": days_structured,
+                "budget_breakdown": budget_breakdown,
                 "spots_used": [s["id"] for s in spots[:10]],
             }
             state["response"] = content

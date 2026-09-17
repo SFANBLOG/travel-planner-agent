@@ -1,7 +1,8 @@
 """应用程序配置（TravelAI 旅行智脑）
 
 工程决策（保证开箱即用，详见 README「与文档的差异」）：
-- 数据库默认 SQLite（路径 backend/data/travelai.db），.env 可切 PostgreSQL。
+- 配置文件为 backend/.env（与 .env.example 同级）；未创建时各项使用下方默认值。
+- 数据库默认 SQLite（路径 <项目根>/data/travelai.db），.env 可切 PostgreSQL。
 - LLM 通过 OPENAI_API_KEY / DEEPSEEK_API_KEY / QWEN_API_KEY + BASE_URL + MODEL 配置，
   兼容 OpenAI 协议；未配置 Key 时工作流自动降级到规则引擎模式，仍可产出完整行程。
 - 向量库 ChromaDB 优先，失败时降级为进程内余弦检索；embedding 默认哈希 n-gram（零依赖），
@@ -12,9 +13,12 @@ from pathlib import Path
 from typing import Optional, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# 注意：env_file 必须用绝对路径，否则从其它 cwd 启动时读不到 .env
-_BACKEND_ROOT = Path(__file__).resolve().parents[2]
-_ENV_FILE = _BACKEND_ROOT / ".env"
+# 路径基准（app/config.py → parents[0]=app, parents[1]=backend, parents[2]=项目根）
+# 注意：env_file 必须用绝对路径，否则从其它 cwd 启动时读不到 .env。
+# .env 与 .env.example 同级，位于 backend/ 下（见 README 快速开始）。
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_ENV_FILE = _BACKEND_DIR / ".env"
 
 
 class Settings(BaseSettings):
@@ -30,8 +34,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     API_PREFIX: str = "/api"
 
-    # 数据库配置
-    DATABASE_URL: str = f"sqlite:///{_BACKEND_ROOT / 'data' / 'travelai.db'}"
+    # 数据库配置（默认落在项目根 data/，见 README「目录结构」）
+    DATABASE_URL: str = f"sqlite:///{_PROJECT_ROOT / 'data' / 'travelai.db'}"
 
     # Redis 配置（可选；留空则使用内存缓存）
     REDIS_URL: Optional[str] = None
@@ -40,6 +44,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "travelai-dev-secret-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 天
+
+    # 默认管理员（首次启动 / init_db 时创建）
+    ADMIN_PASSWORD: str = "admin123456"
 
     # LLM 配置（OpenAI 兼容协议，可切换供应商）
     LLM_PROVIDER: str = "deepseek"  # openai / deepseek / qwen / none
@@ -64,7 +71,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "hash-ngram-384"  # 默认零依赖哈希向量
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     VECTOR_STORE_TYPE: str = "chroma"  # chroma / memory
-    VECTOR_STORE_PATH: str = str(_BACKEND_ROOT / "data" / "vectorstore")
+    VECTOR_STORE_PATH: str = str(_PROJECT_ROOT / "data" / "vectorstore")
     RAG_TOP_K: int = 20
 
     # 外部 API 配置（可选）

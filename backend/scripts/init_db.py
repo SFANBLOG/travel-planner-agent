@@ -5,6 +5,7 @@ import sys
 # 允许以脚本方式运行
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.config import settings
 from app.database import init_db, SessionLocal
 from app.models.user import User
 from app.core.security import hash_password
@@ -18,9 +19,9 @@ def main():
     try:
         if not db.query(User).filter(User.username == "admin").first():
             db.add(User(username="admin", email="admin@travelai.com",
-                       password_hash=hash_password(os.getenv("ADMIN_PASSWORD", "admin123456"))))
+                       password_hash=hash_password(settings.ADMIN_PASSWORD)))
             db.commit()
-            print("[init_db] 已创建默认管理员 admin / admin123456")
+            print("[init_db] 已创建默认管理员 admin")
         seed_all(db)
         print("[init_db] 知识库注入完成")
     finally:

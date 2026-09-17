@@ -33,15 +33,18 @@ async def lifespan(app: FastAPI):
     logger.info("数据库表已就绪")
     # 默认管理员
     _ensure_admin()
-    # 知识库注入（失败不阻塞）
-    try:
-        db = SessionLocal()
+    # 知识库注入（失败不阻塞；SKIP_SEED=true 时跳过）
+    if settings.SKIP_SEED:
+        logger.info("SKIP_SEED=true，跳过知识库注入")
+    else:
         try:
-            seed_all(db)
-        finally:
-            db.close()
-    except Exception as e:
-        logger.warning("知识库初始化异常: %s", e)
+            db = SessionLocal()
+            try:
+                seed_all(db)
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning("知识库初始化异常: %s", e)
     yield
 
 
@@ -52,11 +55,11 @@ def _ensure_admin():
             admin = User(
                 username="admin",
                 email="admin@travelai.com",
-                password_hash=hash_password(os.getenv("ADMIN_PASSWORD", "admin123456")),
+                password_hash=hash_password(settings.ADMIN_PASSWORD),
             )
             db.add(admin)
             db.commit()
-            logger.info("已创建默认管理员 admin / admin123456")
+            logger.info("已创建默认管理员 admin")
     finally:
         db.close()
 

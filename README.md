@@ -149,8 +149,9 @@ npm run build        # 产物输出到 frontend/dist，后端会自动托管该�
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| `DATABASE_URL` | 数据库连接串 | `sqlite:///./data/travelai.db` |
+| `DATABASE_URL` | 数据库连接串（留空则用项目根 `data/travelai.db` 绝对路径） | `sqlite:///<项目根>/data/travelai.db` |
 | `SECRET_KEY` | JWT 签名密钥（**上线务必更换**） | `travelai-dev-secret-change-in-production` |
+| `ADMIN_PASSWORD` | 首次启动创建的默认管理员口令 | `admin123456` |
 | `LLM_PROVIDER` | `openai` / `deepseek` / `qwen` / `none` | `deepseek` |
 | `LLM_API_KEY` | 统一 Key，显式填写时优先级最高 | 空 |
 | `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` / `QWEN_API_KEY` | 各供应商独立 Key | 空 |
@@ -158,7 +159,10 @@ npm run build        # 产物输出到 frontend/dist，后端会自动托管该�
 | `EMBEDDING_MODEL` | 默认 `hash-ngram-384`（零依赖）；配远端时走 OpenAI 兼容 embedding | `hash-ngram-384` |
 | `VECTOR_STORE_TYPE` | `chroma` / `memory` | `chroma` |
 | `RAG_TOP_K` | 检索召回条数 | `20` |
+| `SKIP_SEED` | `true` 时启动跳过知识库注入 | `false` |
 | `AMAP_API_KEY` / `WEATHER_API_KEY` / `FLIGHT_API_KEY` | 可选外部数据源 | 空 |
+
+> `.env` 位于 `backend/` 目录（与 `.env.example` 同级），由 `app/config.py` 以绝对路径加载，因此从任意工作目录启动都能读到。
 
 > **无 Key 也能跑**：不填任何 LLM Key 时，Agent 自动降级到规则引擎模式，仍可生成结构完整的行程，便于本地演示与自动化测试。
 
