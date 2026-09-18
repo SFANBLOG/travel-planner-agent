@@ -10,7 +10,7 @@
 | 能力 | 实现方式 |
 | --- | --- |
 | 多智能体编排 | LangGraph `StateGraph` 六节点流水线，带条件路由与失败重试 |
-| RAG 知识库 | 景点 / 攻略双库检索，ChromaDB 持久化，默认零依赖哈希 n-gram 向量 |
+| RAG 知识库 | 景点 / 攻略双库检索，Milvus 持久化（默认 milvus-lite 嵌入式，无需 Docker），默认零依赖哈希 n-gram 向量 |
 | LLM 供应商可切换 | OpenAI 兼容协议，支持 DeepSeek / OpenAI / 通义千问（Qwen） |
 | 优雅降级 | 未配置 LLM Key 时自动回落规则引擎，仍可产出完整行程；向量库不可用时回落进程内余弦检索 |
 | 前后端分离 | Vue 3 + TypeScript + Vite + Element Plus + Pinia，后端 FastAPI 托管构建产物 |
@@ -25,7 +25,7 @@
 
 - FastAPI · Uvicorn · Pydantic v2 / pydantic-settings
 - SQLAlchemy 2.0（默认 SQLite，可切 PostgreSQL）
-- LangGraph · LangChain-OpenAI · ChromaDB
+- LangGraph · LangChain-OpenAI · Milvus（pymilvus，milvus-lite 嵌入式）
 - python-jose（JWT）· bcrypt（口令哈希）
 
 **前端**
@@ -72,7 +72,7 @@ travel-planner-agent/
 │   │   └── stores/user.ts          # Pinia 用户态
 │   ├── vite.config.ts              # dev 端口 5173，/api 代理至 127.0.0.1:8000
 │   └── package.json
-└── data/                           # 运行时生成：SQLite + ChromaDB（已在 .gitignore 中排除）
+└── data/                           # 运行时生成：SQLite + Milvus（已在 .gitignore 中排除）
 ```
 
 ---
@@ -157,7 +157,8 @@ npm run build        # 产物输出到 frontend/dist，后端会自动托管该�
 | `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` / `QWEN_API_KEY` | 各供应商独立 Key | 空 |
 | `LLM_MODEL` | 模型名 | `deepseek-chat` |
 | `EMBEDDING_MODEL` | 默认 `hash-ngram-384`（零依赖）；配远端时走 OpenAI 兼容 embedding | `hash-ngram-384` |
-| `VECTOR_STORE_TYPE` | `chroma` / `memory` | `chroma` |
+| `VECTOR_STORE_TYPE` | `milvus` / `chroma` / `memory` | `milvus` |
+| `MILVUS_URI` | Milvus 连接地址；本地文件走 milvus-lite 嵌入式（默认 `data/milvus/milvus.db`，无需 Docker），也可改为 `http://host:19530` 连独立服务 | `data/milvus/milvus.db` |
 | `RAG_TOP_K` | 检索召回条数 | `20` |
 | `SKIP_SEED` | `true` 时启动跳过知识库注入 | `false` |
 | `AMAP_API_KEY` / `WEATHER_API_KEY` / `FLIGHT_API_KEY` | 可选外部数据源 | 空 |

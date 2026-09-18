@@ -1,9 +1,10 @@
 """RAG 知识库 Chain
 
 封装景点库（travel_spots）与攻略库（travel_guides）两类向量检索。
-默认使用哈希 embedding + Chroma/内存向量库，无需任何远端服务即可工作。
+默认使用哈希 embedding + Milvus（milvus-lite 嵌入式）/ 内存向量库，无需任何远端服务即可工作。
 
-注意：Chroma 的 metadata 不支持嵌套 dict，写入前会由 _dump_meta_value 序列化。
+注意：向量库元数据整体存入 JSON 字段，嵌套结构（如 ticket_info）由 _dump_meta_value 预序列化；
+读取时 chain 内部 _load_dict 还原。
 """
 import json
 from typing import List, Dict, Any, Optional
@@ -12,7 +13,7 @@ from app.rag.vectorstore import get_vector_store
 
 
 def _dump_meta_value(v: Any) -> Any:
-    """Chroma 元数据只支持 str/int/float/bool/list/None，嵌套结构需序列化。"""
+    """元数据嵌套 dict 预序列化为字符串，保证可存入向量库 JSON 字段。"""
     if isinstance(v, (dict,)):
         return json.dumps(v, ensure_ascii=False)
     return v

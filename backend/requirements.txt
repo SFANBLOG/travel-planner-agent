@@ -12,6 +12,9 @@ email-validator>=2.0
 python-multipart>=0.0.9
 langgraph>=0.0.40
 langchain-openai>=0.1.0
-langchain-chroma>=0.1.0
-chromadb>=0.4.0
+# 向量库：Milvus（默认 milvus-lite 嵌入式，无需 Docker）。
+# pymilvus 提供 MilvusClient；嵌入式模式需 milvus-lite：
+#   pip install "pymilvus[milvus_lite]"
+# 或连接独立 Milvus 服务时仅需 pymilvus。
+pymilvus>=2.5
 openai>=1.0.0

@@ -5,8 +5,9 @@
 - 数据库默认 SQLite（路径 <项目根>/data/travelai.db），.env 可切 PostgreSQL。
 - LLM 通过 OPENAI_API_KEY / DEEPSEEK_API_KEY / QWEN_API_KEY + BASE_URL + MODEL 配置，
   兼容 OpenAI 协议；未配置 Key 时工作流自动降级到规则引擎模式，仍可产出完整行程。
-- 向量库 ChromaDB 优先，失败时降级为进程内余弦检索；embedding 默认哈希 n-gram（零依赖），
-  配置远端 EMBEDDING 时才走 OpenAI 类接口。
+- 向量库 Milvus 优先（默认 milvus-lite 嵌入式，数据落在 data/milvus/milvus.db，无需 Docker），
+  也可通过 MILVUS_URI 指向独立 Milvus 服务（http://host:19530）；初始化失败降级为进程内余弦检索。
+  embedding 默认哈希 n-gram（零依赖），配置远端 EMBEDDING 时才走 OpenAI 类接口。
 - Redis / Celery 为可选增强：未配置时自动退化为内存缓存 + 同步生成，启动不阻塞。
 """
 from pathlib import Path
@@ -70,8 +71,11 @@ class Settings(BaseSettings):
     # RAG / 向量库配置
     EMBEDDING_MODEL: str = "hash-ngram-384"  # 默认零依赖哈希向量
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
-    VECTOR_STORE_TYPE: str = "chroma"  # chroma / memory
-    VECTOR_STORE_PATH: str = str(_PROJECT_ROOT / "data" / "vectorstore")
+    VECTOR_STORE_TYPE: str = "milvus"  # milvus / chroma / memory
+    # Milvus 连接：本地文件走 milvus-lite 嵌入式（默认，无需 Docker）；
+    # 也可改为 http://host:19530 连接独立 Milvus 服务。
+    MILVUS_URI: str = str(_PROJECT_ROOT / "data" / "milvus" / "milvus.db")
+    VECTOR_STORE_PATH: str = str(_PROJECT_ROOT / "data" / "vectorstore")  # 仅 chroma 回退时使用
     RAG_TOP_K: int = 20
 
     # 外部 API 配置（可选）
