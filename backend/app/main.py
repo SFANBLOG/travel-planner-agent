@@ -5,10 +5,20 @@
 知识库注入失败不阻塞启动。
 """
 import os
+import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 允许直接运行本文件（IDE 的 Run 按钮 / `python app/main.py`）：
+# 将 backend/ 注入 sys.path，使 `from app.xxx` 这类绝对导入可用。
+# 否则 Python 只会把脚本所在目录 backend/app 加入 sys.path，导致
+# ModuleNotFoundError: No module named 'app'。
+# 推荐启动方式仍是从 backend/ 目录执行：uvicorn app.main:app --reload --port 8000
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -127,3 +137,16 @@ else:
     @app.get("/")
     def root():
         return {"message": "TravelAI API 运行中，前端未构建。访问 /docs 查看接口。"}
+
+
+# ---- 直接运行入口（IDE Run / `python app/main.py`）----
+if __name__ == "__main__":
+    import uvicorn
+
+    # 端口与 README、前端 vite 代理（127.0.0.1:8000）保持一致，可用环境变量覆盖
+    uvicorn.run(
+        "app.main:app",
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "8000")),
+        reload=False,
+    )
