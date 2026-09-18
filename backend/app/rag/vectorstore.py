@@ -131,32 +131,68 @@ class MilvusVectorStore:
     与 MemoryVectorStore 的 score 语义一致，chain.py 的 relevance_score = 1 - score 直接复用。
     """
 
+    # 远端服务地址的 scheme；带这些前缀的 uri 不能当本地文件路径处理
+    _REMOTE_SCHEMES = ("http://", "https://", "tcp://", "grpc://")
+
     def __init__(self, name: str, uri: str):
         from pymilvus import MilvusClient
         self._uri = uri
-        parent = os.path.dirname(uri)
-        if parent:
-            os.makedirs(parent, exist_ok=True)
+        # 仅本地文件路径（milvus-lite 嵌入式）才需要创建父目录。
+        # 远端地址必须先排除：在 Windows 上 os.path.dirname("http://localhost:19530")
+        # 会返回 "http:"（'/' 被当作路径分隔符），随后 makedirs("http:") 抛
+        # WinError 123，导致远端 Milvus 永远初始化失败、被静默降级为内存向量库。
+        if not uri.startswith(self._REMOTE_SCHEMES):
+            parent = os.path.dirname(uri)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
         self._client = MilvusClient(uri=uri)
         self._name = name
         self._ef = HashEmbeddings()
         self._dim = self._ef.dim
+        self._loaded = False
         self._ensure_collection()
 
     def _ensure_collection(self) -> None:
         from pymilvus import DataType, FieldSchema, CollectionSchema
-        if self._client.has_collection(self._name):
+
+        if not self._client.has_collection(self._name):
+            fields = [
+                FieldSchema(name="pk", dtype=DataType.VARCHAR, is_primary=True, max_length=64),
+                FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535),
+                FieldSchema(name="meta", dtype=DataType.JSON),
+                FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self._dim),
+            ]
+            schema = CollectionSchema(fields, description=self._name)
+            # 必须一并建索引：Milvus 2.x 中无索引的集合无法 load，
+            # 后续 search 会直接报 "collection not loaded"（code=101）。
+            index_params = self._client.prepare_index_params()
+            index_params.add_index(
+                field_name="vector", index_type="AUTOINDEX", metric_type="COSINE"
+            )
+            self._client.create_collection(
+                collection_name=self._name, schema=schema, index_params=index_params
+            )
+            self._loaded = False
+            logger.info("已创建 Milvus 集合: %s (dim=%d, AUTOINDEX/COSINE)", self._name, self._dim)
+
+        if self._loaded:
             return
-        fields = [
-            FieldSchema(name="pk", dtype=DataType.VARCHAR, is_primary=True, max_length=64),
-            FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535),
-            FieldSchema(name="meta", dtype=DataType.JSON),
-            FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self._dim),
-        ]
-        schema = CollectionSchema(fields, description=self._name)
-        self._client.create_collection(
-            collection_name=self._name, schema=schema, metric_type="COSINE"
-        )
+
+        # 兼容历史遗留集合：若缺索引则补建（否则 load 必然失败）
+        try:
+            if not self._client.list_indexes(self._name):
+                index_params = self._client.prepare_index_params()
+                index_params.add_index(
+                    field_name="vector", index_type="AUTOINDEX", metric_type="COSINE"
+                )
+                self._client.create_index(self._name, index_params)
+                logger.info("为已存在集合补齐索引: %s", self._name)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("索引检查/补建失败: %s", e)
+
+        # Milvus 2.x 要求集合 load 到内存后才能检索
+        self._client.load_collection(self._name)
+        self._loaded = True
 
     def add_texts(self, texts: List[str], metadatas: Optional[List[Dict[str, Any]]] = None,
                   ids: Optional[List[str]] = None) -> List[str]:
@@ -224,7 +260,23 @@ class MilvusVectorStore:
         return [d for d, _ in self.similarity_search_with_score(query, k, filter)]
 
     def count(self) -> int:
+        # get_collection_stats 的 row_count 依赖 flush，刚 upsert 后常返回 0；
+        # 且 Milvus 默认 Bounded 一致性，新数据短暂不可见。故先用 Strong 一致性做
+        # count(*) 查询，未命中再 flush 后回退统计信息。
+        for kwargs in ({"consistency_level": "Strong"}, {}):
+            try:
+                res = self._client.query(
+                    collection_name=self._name, filter="",
+                    output_fields=["count(*)"], **kwargs,
+                )
+                if res:
+                    n = int(list(res[0].values())[0])
+                    if n > 0:
+                        return n
+            except Exception:
+                continue
         try:
+            self._client.flush(self._name)
             return int(self._client.get_collection_stats(self._name).get("row_count", 0))
         except Exception:
             return 0
