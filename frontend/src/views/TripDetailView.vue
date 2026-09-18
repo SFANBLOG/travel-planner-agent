@@ -214,7 +214,8 @@ onMounted(load)
               向助手描述你的修改需求，它会给出建议（修改本身在左侧操作）。
             </div>
             <div v-for="(m, i) in messages" :key="i" class="bubble" :class="m.role">
-              {{ m.text }}
+              <MarkdownView v-if="m.role === 'ai'" :source="m.text" compact />
+              <template v-else>{{ m.text }}</template>
             </div>
             <div v-if="chatting" class="bubble ai typing">
               <el-icon class="is-loading"><Loading /></el-icon> 思考中…
@@ -343,13 +344,10 @@ onMounted(load)
   margin-bottom: 16px;
 }
 .raw-plan {
-  white-space: pre-wrap;
   font-size: 13px;
-  line-height: 1.6;
   background: var(--bg);
   border-radius: 8px;
-  padding: 12px;
-  margin: 0;
+  padding: 12px 14px;
 }
 .aside {
   padding: 18px;
@@ -380,14 +378,15 @@ onMounted(load)
   border-radius: 10px;
   font-size: 14px;
   line-height: 1.6;
-  white-space: pre-wrap;
 }
 .bubble.user {
   margin-left: auto;
   background: var(--brand);
   color: #fff;
+  white-space: pre-wrap;
 }
 .bubble.ai {
+  max-width: 97%;
   background: #fff;
   border: 1px solid var(--border);
 }

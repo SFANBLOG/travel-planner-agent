@@ -177,7 +177,10 @@ function useSuggestion(s: string) {
             class="bubble"
             :class="m.role"
           >
-            <div class="bubble-text">{{ m.text }}</div>
+            <div class="bubble-text">
+              <MarkdownView v-if="m.role === 'ai'" :source="m.text" compact />
+              <template v-else>{{ m.text }}</template>
+            </div>
             <div v-if="m.actions && m.actions.length" class="bubble-actions">
               <el-tag
                 v-for="a in m.actions"
@@ -260,14 +263,15 @@ function useSuggestion(s: string) {
   border-radius: 10px;
   font-size: 14px;
   line-height: 1.6;
-  white-space: pre-wrap;
 }
 .bubble.user {
   margin-left: auto;
   background: var(--brand);
   color: #fff;
+  white-space: pre-wrap;
 }
 .bubble.ai {
+  max-width: 96%;
   background: #fff;
   border: 1px solid var(--border);
 }

@@ -10,12 +10,13 @@
 | 能力 | 实现方式 |
 | --- | --- |
 | 多智能体编排 | LangGraph `StateGraph` 六节点流水线，带条件路由与失败重试 |
-| RAG 知识库 | 景点 / 攻略双库检索，Milvus 持久化（默认 milvus-lite 嵌入式，无需 Docker），默认零依赖哈希 n-gram 向量 |
+| RAG 知识库 | 景点 / 攻略双库检索，Milvus 持久化（可连独立服务 `http://host:19530`，也可走 milvus-lite 嵌入式免 Docker），默认零依赖哈希 n-gram 向量 |
 | LLM 供应商可切换 | OpenAI 兼容协议，支持 DeepSeek / OpenAI / 通义千问（Qwen） |
 | 优雅降级 | 未配置 LLM Key 时自动回落规则引擎，仍可产出完整行程；向量库不可用时回落进程内余弦检索 |
 | 前后端分离 | Vue 3 + TypeScript + Vite + Element Plus + Pinia，后端 FastAPI 托管构建产物 |
 | 实时通道 | WebSocket `/api/ws/progress` 推送规划进度 |
 | 认证鉴权 | JWT + bcrypt，受保护路由由前端路由守卫 + 后端依赖注入双重校验 |
+| 助手输出美化 | 对话与行程方案以 Markdown 渲染（标题 / 列表 / 表格 / 代码块 / 引用），自研零依赖渲染器，先转义后转换，天然防 XSS |
 
 ---
 
@@ -25,7 +26,7 @@
 
 - FastAPI · Uvicorn · Pydantic v2 / pydantic-settings
 - SQLAlchemy 2.0（默认 SQLite，可切 PostgreSQL）
-- LangGraph · LangChain-OpenAI · Milvus（pymilvus，milvus-lite 嵌入式）
+- LangGraph · LangChain-OpenAI · Milvus（pymilvus；独立服务或 milvus-lite 嵌入式均可）
 - python-jose（JWT）· bcrypt（口令哈希）
 
 **前端**
@@ -68,8 +69,11 @@ travel-planner-agent/
 │   ├── src/
 │   │   ├── main.ts / App.vue       # 应用外壳（顶栏 / 导航 / 路由出口）
 │   │   ├── api/                    # http / auth / spot / trip
+│   │   ├── components/             # MarkdownView.vue：助手输出的 Markdown 排版渲染
 │   │   ├── router/index.ts         # 路由与登录守卫
-│   │   └── stores/user.ts          # Pinia 用户态
+│   │   ├── stores/user.ts          # Pinia 用户态
+│   │   ├── utils/                  # format.ts 金额/日期格式化 · markdown.ts 零依赖渲染器
+│   │   └── views/                  # Home / Login / TripCreate / Trips / TripDetail
 │   ├── vite.config.ts              # dev 端口 5173，/api 代理至 127.0.0.1:8000
 │   └── package.json
 └── data/                           # 运行时生成：SQLite + Milvus（已在 .gitignore 中排除）
