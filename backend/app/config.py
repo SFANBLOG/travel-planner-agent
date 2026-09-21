@@ -21,6 +21,12 @@ _BACKEND_DIR = Path(__file__).resolve().parents[1]
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _ENV_FILE = _BACKEND_DIR / ".env"
 
+# Milvus 默认数据目录：放在用户主目录（纯 ASCII）而非项目内。
+# 原因：milvus-lite 底层 faiss 无法向含非 ASCII（如中文）的路径写入 .idx 索引
+# 文件（Illegal byte sequence），一旦项目位于中文目录，向量检索会静默失效。
+# 由 Path.home() 计算，跨机器可移植、不写死绝对路径（要求 Windows 用户名 / home 为 ASCII）。
+_MILVUS_DIR = Path.home() / ".travelai" / "milvus"
+
 
 class Settings(BaseSettings):
     """应用配置"""
@@ -73,8 +79,9 @@ class Settings(BaseSettings):
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     VECTOR_STORE_TYPE: str = "milvus"  # milvus / chroma / memory
     # Milvus 连接：本地文件走 milvus-lite 嵌入式（默认，无需 Docker）；
-    # 也可改为 http://host:19530 连接独立 Milvus 服务。
-    MILVUS_URI: str = str(_PROJECT_ROOT / "data" / "milvus" / "milvus.db")
+    # 默认落在用户主目录 <home>/.travelai/milvus/milvus.db（避开中文项目路径）；
+    # 也可改为 http://host:19530 连接独立 Milvus 服务，或改回项目内 data/milvus（需英文路径）。
+    MILVUS_URI: str = str(_MILVUS_DIR / "milvus.db")
     VECTOR_STORE_PATH: str = str(_PROJECT_ROOT / "data" / "vectorstore")  # 仅 chroma 回退时使用
     RAG_TOP_K: int = 20
 
